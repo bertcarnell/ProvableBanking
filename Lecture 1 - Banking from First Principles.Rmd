@@ -1,0 +1,215 @@
+---
+title: "Banking From First Principles"
+author: "Rob Carnell"
+date: 'Rev 0.2, `r strftime(Sys.time(), "%d %b %Y")` '
+output: pdf_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+require(rvest)
+require(lubridate)
+
+if (tolower(Sys.info()["user"]) == "hb82795")
+{
+  httr::set_config(config = httr::config(proxy = "hnbproxy.hban.us", proxyport = 3128L, 
+                                        use_ssl = 0L, ssl_verifypeer = 0L, 
+                                        ssl_verifyhost = 0L, ssl_verifystatus = 0L, 
+                                        proxy_ssl_verifyhost = 0L, 
+                                        proxy_ssl_verifypeer = 0L))
+}
+
+f_adjust_types <- function(z)
+{
+  names(z) <- c("Date", paste0("mo", c(1, 3, 6)), paste0("yr0", c(1, 2, 3, 5, 7)), 
+              paste0("yr", c(10, 20, 30)))
+  z$Date <- as.Date(z$Date, format = "%m/%d/%y")
+  suppressWarnings(z$mo1 <- as.numeric(z$mo1))
+  suppressWarnings(z$mo3 <- as.numeric(z$mo3))
+  suppressWarnings(z$mo6 <- as.numeric(z$mo6))
+  suppressWarnings(z$yr01 <- as.numeric(z$yr01))
+  suppressWarnings(z$yr02 <- as.numeric(z$yr02))
+  suppressWarnings(z$yr03 <- as.numeric(z$yr03))
+  suppressWarnings(z$yr05 <- as.numeric(z$yr05))
+  suppressWarnings(z$yr07 <- as.numeric(z$yr07))
+  suppressWarnings(z$yr10 <- as.numeric(z$yr10))
+  suppressWarnings(z$yr20 <- as.numeric(z$yr20))
+  suppressWarnings(z$yr30 <- as.numeric(z$yr30))
+  return(z)
+}
+
+#my_url <- "https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yieldAll"
+my_url <- "https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yieldYear&year=2018"
+X2018 <- read_html(httr::GET(my_url))
+Y2018 <- X2018 %>% rvest::html_node("table.t-chart") %>% rvest::html_table()
+Y2018 <- f_adjust_types(Y2018)
+
+my_url <- "https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yieldYear&year=2009"
+X2009 <- read_html(httr::GET(my_url))
+Y2009 <- X2009 %>% rvest::html_node("table.t-chart") %>% rvest::html_table()
+Y2009 <- f_adjust_types(Y2009)
+
+my_url <- "https://www.treasury.gov/resource-center/data-chart-center/interest-rates/Pages/TextView.aspx?data=yieldYear&year=2006"
+X2006 <- read_html(httr::GET(my_url))
+Y2006 <- X2006 %>% rvest::html_node("table.t-chart") %>% rvest::html_table()
+Y2006 <- f_adjust_types(Y2006)
+
+```
+
+## Risk Free Yield
+
+The risk free yield is represented by the treasury yield curve.  It is the
+yield a party can invest in without risk.
+
+The Federal Open Market committee or the Federal Reserve Board of Governors, or the Fed 
+sets short term interest rates.
+
+The risk-free rate of return is the theoretical rate of return of an investment with zero risk. The risk-free rate represents the interest an investor would expect from an absolutely risk-free investment over a specified period of time.
+
+In theory, the risk-free rate is the minimum return an investor expects for any investment because he will not accept additional risk unless the potential rate of return is greater than the risk-free rate.
+
+In practice, however, the risk-free rate does not exist because even the safest investments carry a very small amount of risk. Thus, the interest rate on a three-month U.S. Treasury bill is often used as the risk-free rate for U.S.-based investors.
+
+
+
+Read more: Risk-Free Rate Of Return https://www.investopedia.com/terms/r/risk-freerate.asp#ixzz5S2zxvxXx 
+Follow us: Investopedia on Facebook
+
+
+
+Market expectations (pure expectations) hypothesis[edit]
+Main article: Expectations hypothesis
+This hypothesis assumes that the various maturities are perfect substitutes and suggests that the shape of the yield curve depends on market participants' expectations of future interest rates. It assumes that market forces will cause the interest rates on various terms of bonds to be such that the expected final value of a sequence of short-term investments will equal the known final value of a single long-term investment. If this did not hold, the theory assumes that investors would quickly demand more of the current short-term or long-term bonds (whichever gives the higher expected long-term yield), and this would drive down the return on current bonds of that term and drive up the yield on current bonds of the other term, so as to quickly make the assumed equality of expected returns of the two investment approaches hold.
+
+Using this, futures rates, along with the assumption that arbitrage opportunities will be minimal in future markets, and that futures rates are unbiased estimates of forthcoming spot rates, provide enough information to construct a complete expected yield curve. For example, if investors have an expectation of what 1-year interest rates will be next year, the current 2-year interest rate can be calculated as the compounding of this year's 1-year interest rate by next year's expected 1-year interest rate. More generally, returns (1+ yield) on a long-term instrument are assumed to equal the geometric mean of the expected returns on a series of short-term instruments:
+
+{\displaystyle (1+i_{lt})^{n}=(1+i_{st}^{{\text{year }}1})(1+i_{st}^{{\text{year }}2})\cdots (1+i_{st}^{{\text{year }}n}),} (1 + i_{lt})^n=(1 + i_{st}^{\text{year }1})(1 + i_{st}^{\text{year }2}) \cdots (1 + i_{st}^{\text{year }n}),
+where ist and ilt are the expected short-term and actual long-term interest rates (but {\displaystyle i_{st}^{{\text{year}}1}} {\displaystyle i_{st}^{{\text{year}}1}} is the actual observed short-term rate for the first year).
+
+This theory is consistent with the observation that yields usually move together. However, it fails to explain the persistence in the shape of the yield curve.
+
+Shortcomings of expectations theory include that it neglects the interest rate risk inherent in investing in bonds.
+
+Liquidity premium theory[edit]
+The liquidity premium theory is an offshoot of the pure expectations theory. The liquidity premium theory asserts that long-term interest rates not only reflect investors' assumptions about future interest rates but also include a premium for holding long-term bonds (investors prefer short term bonds to long term bonds), called the term premium or the liquidity premium. This premium compensates investors for the added risk of having their money tied up for a longer period, including the greater price uncertainty. Because of the term premium, long-term bond yields tend to be higher than short-term yields and the yield curve slopes upward. Long term yields are also higher not just because of the liquidity premium, but also because of the risk premium added by the risk of default from holding a security over the long term. The market expectations hypothesis is combined with the liquidity premium theory:
+
+{\displaystyle (1+i_{lt})^{n}=rp_{n}+((1+i_{st}^{\mathrm {year} 1})(1+i_{st}^{\mathrm {year} 2})\cdots (1+i_{st}^{\mathrm {year} n}))} (1+i_{{lt}})^{n}=rp_{{n}}+((1+i_{{st}}^{{{\mathrm  {year}}1}})(1+i_{{st}}^{{{\mathrm  {year}}2}})\cdots (1+i_{{st}}^{{{\mathrm  {year}}n}}))
+Where {\displaystyle rp_{n}} rp_{n} is the risk premium associated with an {\displaystyle {n}} {n} year bond.
+
+Preferred habitat theory[edit]
+The preferred habitat theory is a variant of the liquidity premium theory, and states that in addition to interest rate expectations, investors have distinct investment horizons and require a meaningful premium to buy bonds with maturities outside their "preferred" maturity, or habitat. Proponents of this theory believe that short-term investors are more prevalent in the fixed-income market, and therefore longer-term rates tend to be higher than short-term rates, for the most part, but short-term rates can be higher than long-term rates occasionally. This theory is consistent with both the persistence of the normal yield curve shape and the tendency of the yield curve to shift up and down while retaining its shape.
+
+Market segmentation theory[edit]
+This theory is also called the segmented market hypothesis. In this theory, financial instruments of different terms are not substitutable. As a result, the supply and demand in the markets for short-term and long-term instruments is determined largely independently. Prospective investors decide in advance whether they need short-term or long-term instruments. If investors prefer their portfolio to be liquid, they will prefer short-term instruments to long-term instruments. Therefore, the market for short-term instruments will receive a higher demand. Higher demand for the instrument implies higher prices and lower yield. This explains the stylized fact that short-term yields are usually lower than long-term yields. This theory explains the predominance of the normal yield curve shape. However, because the supply and demand of the two markets are independent, this theory fails to explain the observed fact that yields tend to move together (i.e., upward and downward shifts in the curve).
+
+
+
+### Yield curve types
+
+Normal, rising rate
+
+Flat
+
+Inverted
+
+```{r TreasuryPlot, echo=FALSE}
+x <- c(1/12, 3/12, 6/12, c(1,2,3,5,7,10,20,30)*12)
+
+Y1 <- rbind(subset(Y2018, Date == as.Date("2018-01-02")),
+            subset(Y2009, Date == as.Date("2009-11-27")),
+            subset(Y2006, Date == as.Date("2006-11-15")))
+plot(x, Y1[1,-1], type = "l", axes = FALSE, ylim = c(0,7), xlab = "Years",
+     ylab = "Percent", col = "green")
+lines(x, Y1[2,-1], col = "orange")
+lines(x, Y1[3,-1], col = "blue")
+axis(2)
+axis(1, at = x, labels = c("1mo", "3mo", "6mo", 1, 2, 3, 5, 7, 10, 20, 30))
+box()
+legend("topright", legend = c("Flat 1/2/2018", "Normal 11/27/2009", "Inverted 11/15/2006"), 
+       col = c("green","orange", "blue"),
+       lwd = 2,
+       lty = 1,
+       pch = NA)
+
+```
+### Yield curve changes throughout the year
+
+```{r TreasuryPlot2018, echo=FALSE}
+Y1 <- subset(Y2018, Date >= as.Date("2018-01-01"))
+plot(x, Y1[1,-1], type = "l", axes = FALSE, ylim = c(0,5), xlab = "Years",
+     ylab = "Percent", col = "grey", log = "x")
+apply(Y1[-1,-1], 1, function(z) lines(x, z, col = "grey"))
+lines(x, Y1[nrow(Y1), -1], col = "green", lwd = 2)
+axis(2)
+axis(1, at = x, labels = c("1mo", "3mo", "6mo", 1, 2, 3, 5, 7, 10, 20, 30))
+box()
+```
+
+
+## Starting a Bank
+
+### One CD, one secured loan, matched term and some equity
+
+* spread income
+* Balance Sheet
+* Income (Interest income, interest expense)
+* ROE
+* ROA
+* leverage
+
+#### Risks
+
+* can I do this again at the end of the term?
+* default on loan = lose equity.  If CD comes due, bankrupt or need more equity
+
+### One Loan and a shorter term CD
+
+* make more spread
+
+#### Risks
+
+* interest rate risk that rates will rise before I need to issue new CDs
+which will compress the spread
+
+### Duration
+
+* how does it work
+
+## Balance Sheet Concepts
+
+$$\Sigma a = \Sigma l + \Sigma q$$
+
+* `a` = Assets
+* `l` = Liabilities
+* `q` = Equity
+
+$$i_{PTPP} = i_{NI} + i_{I} - e_{I} - e_{NI}$$
+
+* `i` = Income
+* `e` = Expense
+* `PTPP` = Pre-Tax Pre-Provision
+* `NI` = Non-Interest
+* `I` = Interest
+
+$$i_{NIBT} = i_{PTPP} - e_{PLL}$$
+
+* `NIBT` = Net Income Before Taxes.
+* `PLL` = Provision for Loan Losses
+
+$$i_{Net} = i_{NIBT} - e_{Tax}$$
+$$i_{Net, ATC} = i_{Net} - e_{Pref\ Div}$$
+
+* `ATC` = Available to Common or available to common shareholders
+* `Pref Div` = Dividends for Preferred shared
+
+$$\eta = \frac{i_{NI} + i_{I} - e_{I} - e_{NI}}{i_{NI} + i_{I} - e_{I}}$$
+$$efficiency\ ratio = (1-\eta) = \frac{e_{NI}}{i_{NI} + i_{I} - e_{I}}$$
+
+
+
+
+## Dictionary
+
+* Yield - The yield is the income return on an investment, such as the interest or dividends received from holding a particular security. The yield is usually expressed as an annual percentage rate based on the investment's cost, current market value or face value. Yields may be considered known or anticipated depending on the security in question as certain securities may experience fluctuations in value. {https://www.investopedia.com/terms/y/yield.asp}
+* APY - The annual percentage yield (APY) is the effective annual rate of return taking into account the effect of compounding interest. APY is calculated by `=(1 + periodic rate)^{Periods} - 1`  The resultant percentage assumes that the funds will remain in the investment vehicle for a full 365 days. {https://www.investopedia.com/terms/a/apy.asp}
+* APR - An annual percentage rate (APR) is the annual rate charged for borrowing or earned through an investment, and is expressed as a percentage that represents the actual yearly cost of funds over the term of a loan. This includes any fees or additional costs associated with the transaction but does not take compounding into account. As loans or credit agreements can vary in terms of interest-rate structure, transaction fees, late penalties and other factors, a standardized computation such as the APR provides borrowers with a bottom-line number they can easily compare to rates charged by other lenders. {https://www.investopedia.com/terms/a/apr.asp}
+
