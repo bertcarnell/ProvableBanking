@@ -10,6 +10,7 @@ require(rvest)
 require(lubridate)
 require(ggplot2)
 require(plotly)
+require(assertthat)
 
 if (tolower(Sys.info()["user"]) == "hb82795")
 {
@@ -85,6 +86,14 @@ rates.
 In theory, the risk-free rate is the minimum return an investor expects for any 
 investment because any investment with greater risk should yield a higher rate to compensate for it. [1](https://www.investopedia.com/terms/r/risk-freerate.asp#ixzz5S2zxvxXx )
 
+Treasury maturities:
+* Treasury Bills have maturity <= 1 yr.  They are sold at a discount to face
+value.  The face value is returned at maturity.
+* Treasury Notes have matruity 2 - 10 yrs.  Yield a fixed
+interest rate with payments every 6 months.
+* Treasury Bonds, 20 - 30 yrs.  Yield a fixed
+interest rate with payments every 6 months.  
+
 #### Market expectations Theory
 
 Market expectations theory postulates that the yield curve shape depends on 
@@ -94,7 +103,7 @@ return because there is no differential risk between the two.  When this does
 not hold, it indicates a short term opportunity which will be corrected by the
 market.
 
-#### Liquidity premium theory
+#### Liquidity premium Theory
 
 The liquidity premium theory also believes that there is a liquidity premium
 inherent in holding long-term bonds.  There is risk that the interest rate
@@ -130,7 +139,7 @@ g1 <- ggplot(df1, aes(x = x, y = y, group = id, col = id)) +
   geom_line() + geom_point() +
   ylim(0, 6) + ylab("Percent") +
   scale_x_log10(limits = c(0.08, 31), breaks = x, labels = x_labels, name = "Years") +
-  theme(legend.title = element_blank()) +
+  theme_bw() + theme(legend.title = element_blank()) +
   ggtitle("Example Yield Curves (Note the logaritmic scale)")
 plot(g1)
 
@@ -151,7 +160,7 @@ g1 <- ggplot(df1, aes(x = x, y = y, group = date)) +
   geom_line(aes(x = x, y = y, group = date), data = df2, col = "green") +
   ylim(0, 4) + ylab("Percent") +
   scale_x_log10(limits = c(0.08, 31), breaks = x, labels = x_labels, name = "Years") +
-  ggtitle("Yield Curve Changes in 2018")
+  ggtitle("Yield Curve Changes in 2018") + theme_bw()
 plot(g1)
 
 Y1 <- subset(Y, day(Date) == 1) # get the first of each month not a weekend
@@ -162,9 +171,10 @@ df1 <- data.frame(x = rep(x, each = nrow(Y1)),
 g1 <- ggplot(df1, aes(x = x, y = y, group = date)) + 
   geom_line(aes(frame = date, ids = ids), col = "blue") + 
   geom_point(aes(frame = date, ids = ids), col = "blue", size = 1.5) +
-  ylim(0, 8) + ylab("Percent") +
+  ylim(0, 9) + ylab("Percent") +
   scale_x_log10(limits = c(0.08, 30), breaks = x, 
-                labels = x_labels, name = "Years")
+                labels = x_labels, name = "Years") +
+  theme_bw()
 ggplotly(g1)
 
 df1 <- reshape::melt(Y, id.vars = "Date")
@@ -181,7 +191,7 @@ g1 <- ggplot(data = df1) +
                 ymin = 0, ymax = Inf), fill = "lightgrey") +
   geom_line(aes(x = Date, y = yield, group = Duration, col = Duration)) +
   theme_bw() +
-  ylim(0, 9) + ylab("Percent")
+  ylim(0, 9) + ylab("Percent") +
   ggtitle("Yields on Each Treasury Duration Over Time")
 plot(g1)
 
@@ -215,34 +225,41 @@ plot(g1)
 
 ## Starting a Bank
 
-### Our Yield Curve
+### Example Yield Curve
 
 * All rates in this section are annualized.
-* All loans and deposit products are paid or charged interest at the end of the term.  The
-entire principle and interest are paid back at the end of the term
+* All loans and deposit products are paid or charged interest at the end of each 
+year.  The entire principle and interest are paid back at the end of the term.
 
-```{r}
+```{r echo=FALSE}
 df1 <- data.frame(x = x,
                   y = c(1.5, 1.6, 1.7, 1.85, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5))
 
 g1 <- ggplot(df1, aes(x = x, y = y)) + 
   geom_line() + geom_point() +
   ylim(0, 5) + ylab("Percent") +
-  scale_x_log10(limits = c(0.08, 31), breaks = x, labels = x_labels, name = "Years")
+  scale_x_log10(limits = c(0.08, 31), breaks = x, labels = x_labels, name = "Years") +
+  theme_bw()
 plot(g1)
 
 ```
+
 ### One CD, one secured loan, matched term and some equity
+
+```{r echo=FALSE}
+cd_rate <- 0.0050
+cd_value <- 100000
+loan_rate <- 0.03
+loan_value <- 200000
+```
 
 * Accept a one year CD at 0.50% for $100,000
 * Take $100,000 of shareholder investment
 * Loan a one year secured loan at 3.0% for $200,000
 
-* Interest Income = `r scales::dollar(0.03*200000)`
-* Interest Expense = `r scales::dollar(0.0050*100000)`
-* Net Interest Income = Spread Income = `r scales::dollar(0.03*200000-0.0050*100000)`
-* Return on Average Assets = `r scales::percent((0.03*200000-0.0050*100000)/200000)`
-* Return on Equity = `r scales::percent((0.03*200000-0.0050*100000)/100000)`
+* Interest Income = `r scales::dollar(loan_rate*loan_value)`
+* Interest Expense = `r scales::dollar(cd_rate*cd_value)`
+* Net Interest Income = Spread Income = `r scales::dollar(loan_rate*loan_value-cd_rate*cd_value)`
 
 ```{r echo=FALSE}
 g1 <- ggplot(df1, aes(x = x, y = y)) + 
@@ -251,17 +268,25 @@ g1 <- ggplot(df1, aes(x = x, y = y)) +
   scale_x_log10(limits = c(0.08, 31), breaks = x, labels = x_labels, name = "Years") +
   annotate("point", x = 1, y = 0.5, col = "blue") +
   annotate("point", x = 1, y = 3, col = "red") +
-  annotate("segment", x = 1, xend = 1, y = 0.5, yend = 3, col="green")
+  annotate("segment", x = 1, xend = 1, y = 0.5, yend = 3, col = "green") +
+  theme_bw()
 plot(g1)
 ```
 
 
 #### Risks
 
-* can I do this again at the end of the term?
-* default on loan = lose equity.  If CD comes due, bankrupt or need more equity
+* Can I do this again at the end of the term?
+* If the loan defaults, then equity may be lost to repay the depositors.
 
 ### One Loan and a shorter term CD
+
+```{r echo=FALSE}
+cd_rate <- 0.0030
+cd_value <- 100000
+loan_rate <- 0.0315
+loan_value <- 200000
+```
 
 In order to make more spread income, we can shorten the maturity on deposits and increase
 the maturity of the loans.
@@ -272,11 +297,9 @@ the maturity of the loans.
 
 Each year,
 
-* Interest Income = `r scales::dollar(0.0315*200000)`
-* Interest Expense = `r scales::dollar(0.0035*100000)`
-* Net Interest Income = Spread Income = `r scales::dollar(0.0315*200000-0.0035*100000)`
-* Return on Average Assets = `r scales::percent((0.0315*200000-0.0035*100000)/200000)`
-* Return on Equity = `r scales::percent((0.0315*200000-0.0035*100000)/100000)`
+* Interest Income = `r scales::dollar(loan_rate*loan_value)`
+* Interest Expense = `r scales::dollar(cd_rate*cd_value)`
+* Net Interest Income = Spread Income = `r scales::dollar(loan_rate*loan_value-cd_rate*cd_value)`
 
 ```{r echo=FALSE}
 g1 <- ggplot(df1, aes(x = x, y = y)) + 
@@ -286,9 +309,11 @@ g1 <- ggplot(df1, aes(x = x, y = y)) +
   annotate("point", x = 0.5, y = 0.35, col = "blue") +
   annotate("point", x = 2, y = 3.15, col = "red") +
   annotate("segment", x = 0.5, xend = 0.5, y = 0.35, yend = 1.7, col = "green") +
-  annotate("segment", x = 2, xend = 2, y = 2, yend = 3.15, col = "green")
+  annotate("segment", x = 2, xend = 2, y = 2, yend = 3.15, col = "green") +
+  theme_bw()
 plot(g1)
 ```
+
 #### Risks
 
 * interest rate risk that rates will rise before I need to issue new CDs
@@ -296,44 +321,194 @@ which will compress the spread
 
 ### Duration
 
-* how does it work
+Duration represents the sensitivity of a portfolio to future interest rate increases.  One
+formulation is caluclated as the average maturity weighted by the present value
+of each payment.
 
-## Balance Sheet Concepts
+$$\textit{Macaulay Duration} = \frac{\sum\limits_{j=1}^n t_j PV_j}{\sum\limits_{j=1}^n PV_j}$$
 
-$$\Sigma a = \Sigma l + \Sigma q$$
+where:
 
-* `a` = Assets
-* `l` = Liabilities
-* `q` = Equity
+* $t_i$ is the time of the i^{th} cash flow
+* $PV_i$ is the present value of the i^{th} cash flow
 
-$$i_{PTPP} = i_{NI} + i_{I} - e_{I} - e_{NI}$$
+#### Duration Gap
 
-* `i` = Income
-* `e` = Expense
-* `PTPP` = Pre-Tax Pre-Provision
-* `NI` = Non-Interest
-* `I` = Interest
+The duration gap is the difference between the assest and liability gap and gives
+a measure for the change in portfolio value or Net Worth (NW) given a change in interest rates.
 
-$$i_{NIBT} = i_{PTPP} - e_{PLL}$$
+$$D_{gap} = D_a - \frac{\sum a_j}{\sum l_j} D_l$$
 
-* `NIBT` = Net Income Before Taxes.
-* `PLL` = Provision for Loan Losses
+$$\Delta NW = - D_{gap} * \frac{\Delta i}{1 + i}$$
 
-$$i_{Net} = i_{NIBT} - e_{Tax}$$
-$$i_{Net, ATC} = i_{Net} - e_{Pref\ Div}$$
+```{r echo=FALSE, results=FALSE}
+macaulay_duration <- function(times, cash_flows, discount_rate_per_period)
+{
+  assertthat::assert_that(length(times) == length(cash_flows))
+  discount_factor <- (1 + discount_rate_per_period)^times
+  V <- sum(cash_flows / discount_factor)
+  return(sum(times * cash_flows / discount_factor) / V)
+}
+assertthat::assert_that(all.equal(
+  macaulay_duration(1:6, c(rep(30, 5), 1030), 0.03), 5.58,
+  tolerance = 0.001))
 
-* `ATC` = Available to Common or available to common shareholders
-* `Pref Div` = Dividends for Preferred shared
+yield_to_maturity <- function(periods_remaining, coupon_payment, 
+                              bond_price, maturity_value)
+{
+  f <- function(i, n, bp, cf, mv)
+  {
+    (cf*(1 - (1/(1 + i)^n))/i + mv / (1 + i)^n - bp)^2
+  }
+  o1 <- optimize(f, interval = c(0, 1000), n = periods_remaining, bp = bond_price,
+              cf = coupon_payment, mv = maturity_value)
+  return(o1$minimum)
+}
+assertthat::assert_that(all.equal(yield_to_maturity(5, 2.5, 95.92, 100), 0.034, 
+                                  tolerance = 0.001))
+```
 
-$$\eta = \frac{i_{NI} + i_{I} - e_{I} - e_{NI}}{i_{NI} + i_{I} - e_{I}}$$
-$$efficiency\ ratio = (1-\eta) = \frac{e_{NI}}{i_{NI} + i_{I} - e_{I}}$$
+#### Duration of the Portfolio
+
+```{r echo=FALSE}
+duration_l <- macaulay_duration(1, 100000*(1 + 0.0035/2), 0.0035/2) * 0.5 # 1/2 to change from 6 month periods to 1 year periods
+duration_a <- macaulay_duration(1:2, c(0.0315*200000, 200000*(1 + 0.0315)), 0.0315)
+duration_gap <- duration_a - cd_value / loan_value * duration_l
+change_worth <- -1 * duration_gap * 0.01 / (1 + 0.0175) # 1.75% is an average interest rate
+```
+
+* Duration of the liabilities = `r signif(duration_l, 3)` years
+* Duration of the assets = `r signif(duration_a, 3)` years
+* Duration gap = `r signif(duration_gap, 3)` years
+
+If rates rise from the current environment of 1.75% to 2.75% then the value of the
+portfolio decreases by `r scales::percent(change_worth)`.
+
+## Balance Sheet and Income Statement Concepts
+
+### Balance Sheet
+
+$$a = l + q$$
+$$a = \sum a_j,\ \ \ l = \sum l_j,\ \ \ q = \sum q_j$$
+
+* $a$ = Total Assets
+* $l$ = Total Liabilities
+* $q$ = Total Equity
+* $j$ = individual asset, liability,or equity
+
+$$\langle a \rangle = \frac{1}{t_2 - t_1}\int_{t_1}^{t_2}a(t)dt$$
+
+* $\langle a \rangle$ = Average Assets or Time-Averaged Assets
+* similaryly, $\langle l \rangle$ and $\langle q \rangle$
+
+### Income Statement
+
+$$i_{\textit{PTPP}} = i_{nI} + i_{I} - e_{I} - e_{nI}$$
+$$i_{NI} = i_{I} - e_{I}$$
+$$\textit{Total Revenue} = i_{I} + i_{nI}$$
+
+* $i$ = Income
+* $e$ = Expense
+* $PTPP$ = Pre-Tax Pre-Provision
+* $nI$ = Non-Interest
+* $I$ = Interest
+* $NI$ = Net Interest
+
+$$i_{\textit{NIBT}} = i_{\textit{PTPP}} - e_{\textit{PLL}}$$
+
+* $NIBT$ = Net Income Before Taxes.
+* $PLL$ = Provision for Loan Losses
+
+$$i_{N} = i_{\textit{NIBT}} - e_{\textit{Tax}}$$
+$$i_{\textit{NIATC}} = i_{N} - e_{\textit{Pref Div}}$$
+
+* $N$ = Net
+* $NIATC$ = Net Income Available to Common or available to common shareholders
+* $Pref\ Div$ = Dividends for Preferred shared
+
+### Performance Measures
+
+```{r echo=FALSE}
+make_performance_graph <- function(key, xlabel, show_zero = TRUE)
+{
+  URL <- "https://fred.stlouisfed.org/graph/fredgraph.csv?drp=0&mode=fred&id=USROE&cosd=1984-01-01&coed=2018-04-01&fq=Quarterly%2C%20End%20of%20Period&fam=avg&vintage_date=2018-10-14&revision_date=2018-10-14&nd=1984-01-01"
+  URL_parsed <- httr::parse_url(URL)
+  URL_parsed$query$id <- key
+  URL <- httr::build_url(URL_parsed)
+  
+  data_page <- httr::GET(URL)
+  suppressMessages(csv_data <- httr::content(data_page, as = "parsed", type = "text/csv", 
+                            encoding = "UTF-8"))
+  
+  g1 <- ggplot(csv_data, aes_string(x = "DATE", y = key)) + 
+      xlab("") + ylab(xlabel) + theme_bw() +
+      geom_rect(aes(xmin = as.Date("2007-12-07"), 
+                    xmax = as.Date("2009-06-02"), 
+                    ymin = -Inf, ymax = Inf), fill = "lightgrey") +
+      geom_rect(aes(xmin = as.Date("1990-07-01"), 
+                    xmax = as.Date("1991-03-31"), 
+                    ymin = -Inf, ymax = Inf), fill = "lightgrey") +
+      geom_rect(aes(xmin = as.Date("2001-03-01"), 
+                    xmax = as.Date("2001-11-30"), 
+                    ymin = -Inf, ymax = Inf), fill = "lightgrey") +
+      geom_line()
+  if (show_zero)
+    g1 <- g1 + geom_hline(yintercept = 0, col = "red")
+
+  plot(g1)
+}
+```
+
+$$\eta = \frac{i_{nI} + i_{I} - e_{I} - e_{nI}}{i_{nI} + i_{I} - e_{I}}$$
+$$\textit{efficiency ratio} = (1-\eta) = \frac{e_{nI}}{i_{nI} + i_{I} - e_{I}}$$
+
+```{r echo=FALSE}
+make_performance_graph("DDEI07USA156NWDB", "US Average Efficiency Ratio", 
+                       show_zero = FALSE)
+```
 
 
+$$\textit{ROE} = \frac{i_{\textit{NIATC}}}{\langle e \rangle}$$
 
+```{r echo=FALSE}
+make_performance_graph("USROE", "US Averge Return on Equity")
+```
+
+$$\textit{ROA} = \frac{i_{\textit{NIATC}}}{\langle a\rangle}$$
+
+```{r echo=FALSE}
+make_performance_graph("USROA", "US Averge Return on Average Assets")
+```
+
+
+$$\textit{ROE} = (\textit{Leverage})(\textit{ROA})$$
+
+$$\textit{ROE} =  (\textit{Asset Yield})(\textit{Profit Margin})(\textit{Leverage})$$
+$$\textit{ROE} = \frac{\textit{Total Revenue}}{\textit{Avg Total Assets}}\frac{\textit{Net Income}}{\textit{Total Revenue}}\frac{\textit{Avg Total Assets}}{\textit{Avg Common Equity}}$$
+$$\textit{ROE} = \frac{i_{nI}+i_{I}}{\langle a \rangle}\frac{i_{\textit{NIATC}}}{i_{nI}+i_{I}}\frac{\langle a \rangle}{\langle e \rangle}$$
+$$\textit{NIM} = \frac{i_I - e_I}{\langle a_{\textit{earning}} \rangle}$$
+
+* $NIM$ = Net Interest Margin
+* $\langle a_{\textit{earning}} \rangle$ = Average Earning Assets
+
+```{r echo=FALSE}
+make_performance_graph("USNIM", "US Average Net Interest Margin", show_zero = FALSE)
+```
 
 ## Dictionary
 
 * Yield - The yield is the income return on an investment, such as the interest or dividends received from holding a particular security. The yield is usually expressed as an annual percentage rate based on the investment's cost, current market value or face value. Yields may be considered known or anticipated depending on the security in question as certain securities may experience fluctuations in value. {https://www.investopedia.com/terms/y/yield.asp}
-* APY - The annual percentage yield (APY) is the effective annual rate of return taking into account the effect of compounding interest. APY is calculated by `=(1 + periodic rate)^{Periods} - 1`  The resultant percentage assumes that the funds will remain in the investment vehicle for a full 365 days. {https://www.investopedia.com/terms/a/apy.asp}
+* APY - The annual percentage yield (APY) is the effective annual rate of return taking into account the effect of compounding interest. APY is calculated by $(1 + periodic rate)^{Periods} - 1$  The resultant percentage assumes that the funds will remain in the investment vehicle for a full 365 days. {https://www.investopedia.com/terms/a/apy.asp}
 * APR - An annual percentage rate (APR) is the annual rate charged for borrowing or earned through an investment, and is expressed as a percentage that represents the actual yearly cost of funds over the term of a loan. This includes any fees or additional costs associated with the transaction but does not take compounding into account. As loans or credit agreements can vary in terms of interest-rate structure, transaction fees, late penalties and other factors, a standardized computation such as the APR provides borrowers with a bottom-line number they can easily compare to rates charged by other lenders. {https://www.investopedia.com/terms/a/apr.asp}
 
+#### Bond terminology
+
+* Coupon rate - The yield paid by a fixed income security.  If a bond is issued with a \$1,000 face value
+and a \$25 coupon every six months, then the annual interest rate is $5\% = \frac{2*25}{1000}$
+* Market rate - The yield paid by an equivalent maturity in the market
+* Yield to Maturity - This is the yield paid by the bond using the market value
+of the bond as the denominator.  For example, a \$100 face value or par value bond has
+a \$5 coupon payment twice a year or a 10\% yield.  The bond trades for \$90 so the yield
+to maturity on the remaining payments is $\frac{10}{90} = 11.1\%$ 
+* Zero Coupon Bond - a bond that pays no periodic interest and instead pays the 
+principal and interest at bond maturity.
