@@ -1,0 +1,92 @@
+---
+title: "Lecture 2 - Balance Sheet"
+author: "Rob Carnell"
+date: "October 15, 2018"
+output:
+  beamer_presentation: default
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+## Balance Sheet
+
+- Represents the Assets, Liabilities, and Equity in the bank at a point in time
+- $a = l + q$
+- The Balance Sheet must **balance**.  If the balance sheet is out of balance then actions must be taken to balance it
+- Since the balance sheet only represents a point in time, a time-averaged quantity,
+like Average Assets ($\langle a \rangle$), needs to be used to understand the effect of the balance through time
+- Entries on the balance sheet are normally listed in order from shortest life to longest life (with many exceptions)
+
+## Specifics of a Bank Balance Sheet
+
+- Uses GAAP accounting (Generally Accepted Accounting Principles), but will also use non-GAAP accounting to put one-time events into context for investors
+- Links to the income statement
+    + Earning Assets create Interest Income
+    + Liabilities create Interest Expense
+    + Provision for Loan Losses (PLL) creates the Allowance for Loan and Lease Losses (ALLL)
+- Asset Categories
+    + Long term / Short term
+    + Earning / Non-Earning
+    + Performing / Non-Performing
+- Liabilities
+    + Core and non-Core
+    + Long term / Short term
+  
+## Assets
+
+\begin{table}[]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+Asset Type & Term & Earning \\ \hline
+Cash & Short & Non-Earning \\
+Deposits Held at the Fed & Short & Earning \\
+Cash due from Banks & Short & Earning / non-Earning \\
+Fed Funds Sold & Short & Earning \\
+Securities & Short / Long & Earning \\
+Loans & Long & Earning \\
+\ \ (ALLL) & & non-Earning \\
+\ \ Net Loans & & \\
+Premises & Long & non-Earning \\
+Goodwill & Long & non-Earning \\
+Other Assets & Long & Earning / non-Earning \\ \hline
+\end{tabular}
+\end{table}
+
+## Asset Definitions
+
+- Deposits held at the Fed
+    + Funds held in Reserve against deposit liabilities
+    + 10% required for insititutions with >$122.3MM
+
+## Liabilities
+
+\begin{table}[]
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+Liability Type & Term & Core \\ \hline
+Non-interest bearing deposits & Short & Core \\
+Interest bearing deposits & Short & Core \\
+Retail CDs & Short / Long & Core \\ 
+Jumbo CDs and Brokered deposits & Short / Long & non-Core \\
+Fed funds purchased & Short & non-Core \\
+Long-Term debt & Long & non-Core \\
+Subordinated debt & Long & non-Core \\
+Other borrowing & Long & non-Core \\
+Other liabilities & Long & non-Core \\ \hline
+\end{tabular}
+\end{table}
+
+## Equity
+
+- Preferred Equity
+- Common Equity
+- Additional Paid in Capital (APIC)
+- Retained Earnings
+- Treasury Stock
+
+## Notes
+
+- Securities can be Trading, Held for Sale (like mortgages), or Held to Maturity
+- Securities can be booked at historical value or marked-to-market
