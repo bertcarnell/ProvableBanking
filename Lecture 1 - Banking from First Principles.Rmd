@@ -11,6 +11,7 @@ require(lubridate)
 require(ggplot2)
 require(plotly)
 require(assertthat)
+require(waterfalls)
 
 if (tolower(Sys.info()["user"]) == "hb82795")
 {
@@ -23,10 +24,11 @@ if (tolower(Sys.info()["user"]) == "hb82795")
 
 f_adjust_types <- function(z)
 {
-  names(z) <- c("Date", paste0("mo", c(1, 3, 6)), paste0("yr0", c(1, 2, 3, 5, 7)), 
+  names(z) <- c("Date", paste0("mo", c(1, 2, 3, 6)), paste0("yr0", c(1, 2, 3, 5, 7)), 
               paste0("yr", c(10, 20, 30)))
   z$Date <- as.Date(z$Date, format = "%m/%d/%y")
   suppressWarnings(z$mo1 <- as.numeric(z$mo1))
+  suppressWarnings(z$mo2 <- as.numeric(z$mo2))
   suppressWarnings(z$mo3 <- as.numeric(z$mo3))
   suppressWarnings(z$mo6 <- as.numeric(z$mo6))
   suppressWarnings(z$yr01 <- as.numeric(z$yr01))
@@ -87,9 +89,10 @@ In theory, the risk-free rate is the minimum return an investor expects for any
 investment because any investment with greater risk should yield a higher rate to compensate for it. [1](https://www.investopedia.com/terms/r/risk-freerate.asp#ixzz5S2zxvxXx )
 
 Treasury maturities:
+
 * Treasury Bills have maturity <= 1 yr.  They are sold at a discount to face
 value.  The face value is returned at maturity.
-* Treasury Notes have matruity 2 - 10 yrs.  Yield a fixed
+* Treasury Notes have maturity 2 - 10 yrs.  Yield a fixed
 interest rate with payments every 6 months.
 * Treasury Bonds, 20 - 30 yrs.  Yield a fixed
 interest rate with payments every 6 months.  
@@ -126,8 +129,8 @@ The yield curve generally takes three shapes:
 often a signal of an impending recession.
 
 ```{r TreasuryPlot, echo=FALSE}
-x <- c(1/12, 3/12, 6/12, c(1,2,3,5,7,10,20,30))
-x_labels <- c("1mo", "3mo", "6mo", 1, 2, 3, 5, 7, 10, 20, 30)
+x <- c(1/12, 2/12, 3/12, 6/12, c(1,2,3,5,7,10,20,30))
+x_labels <- c("1mo", "2mo", "3mo", "6mo", 1, 2, 3, 5, 7, 10, 20, 30)
 
 Y1 <- rbind(subset(Y2018, Date == as.Date("2018-01-02")),
             subset(Y2009, Date == as.Date("2009-11-27")),
@@ -233,7 +236,7 @@ year.  The entire principle and interest are paid back at the end of the term.
 
 ```{r echo=FALSE}
 df1 <- data.frame(x = x,
-                  y = c(1.5, 1.6, 1.7, 1.85, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5))
+                  y = c(1.5, 1.5, 1.6, 1.7, 1.85, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5))
 
 g1 <- ggplot(df1, aes(x = x, y = y)) + 
   geom_line() + geom_point() +
@@ -425,6 +428,26 @@ $$i_{\textit{NIATC}} = i_{N} - e_{\textit{Pref Div}}$$
 * $N$ = Net
 * $NIATC$ = Net Income Available to Common or available to common shareholders
 * $Pref\ Div$ = Dividends for Preferred shared
+
+```{r waterfalls}
+g <- waterfall(values = c(10, -2, 8, -4, -1, -0.4, -0.2),
+          labels = c("Interest\nIncome", "Interest\nExpense", "Non-Interest\nIncome",
+                     "Non-Interest\nExpense", "Provision for\nLoan Losses",
+                     "Tax", "Preferred\nDividends"),
+          calc_total = TRUE,
+          rect_width = 0.5,
+          print_plot = FALSE,
+          rect_text_labels = character(7),
+          total_rect_text = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.x = element_blank())
+
+g + annotate("text", x = 2.5, y = 8.2, label = "Net Income", angle = 90, hjust = 0) +
+  annotate("text", x = 4.5, y = 12.2, label = "PTPP", angle = 90, hjust = 0) +
+  annotate("text", x = 5.5, y = 11.2, label = "NIBT", angle = 90, hjust = 0) +
+  annotate("text", x = 6.5, y = 10.8, label = "NI", angle = 90, hjust = 0) +
+  annotate("text", x = 7.5, y = 10.6, label = "NIATC", angle = 90, hjust = 0)
+```
 
 ### Performance Measures
 
