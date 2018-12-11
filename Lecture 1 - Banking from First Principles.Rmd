@@ -12,6 +12,7 @@ require(ggplot2)
 require(plotly)
 require(assertthat)
 require(waterfalls)
+require(data.tree)
 
 if (tolower(Sys.info()["user"]) == "hb82795")
 {
@@ -120,6 +121,49 @@ and that investing outside of that time horizon deserves a premium.  If short
 term investments are preferred on average, then longer term investments should
 yield higher rates.  
 
+#### Compounded interest effect
+
+- Investment 1 is a 1 year bond where you are paid the principal and interest
+at the end of each year.  Each year you reinvest the whole amount.  The bond has
+a 2% interest rate
+- Investment 2 is a 30 year bond where you are paid the interest each year  
+at the end of the year, and then the principal is returned in the last year.
+
+What rate is required on investment 2 to be be equal to the return of investment 1 
+at the end of 30 years if inflation is 1%?
+
+```{r investment_calc, echo=FALSE, warnings=FALSE}
+start <- 1
+inflation_rate <- 0.01
+rate1 <- 0.02
+ret1 <- start * (1 + rate1) ^ 30
+npv1 <- (-start) * (1 + inflation_rate) ^ 30 + ret1
+
+f <- function(rate2)
+{
+  (sum(rep(rate2 * start, 30)) + start - ret1)^2
+}
+o <- optimize(f = f, interval = c(0, 1))
+rate2 <- o$minimize
+
+f <- function(rate2)
+{
+  (sum(rep(rate2 * start, 30)*(1 + inflation_rate) ^ (1:30) + c(rep(0, times = 29), start) + 
+         c(-start * (1 + inflation_rate) ^ 30, rep(0, times = 29))) - npv1)^2
+}
+o_inf <- optimize(f = f, interval = c(0, 1))
+
+```
+
+- Investment 1 returns \$1.81 at the end of the 30 years, for a total of \$0.81 in return
+and \$0.34 in NPV
+- Investment 2 returns \$1.81 at the end of the 30 years summing the coupon payments at 
+an interest rate of 2.7%
+- Investment 2 returns $0.34 in NPV at an interest rate of 2.3%
+
+Therefore, an investor would find Investment 1 at 2% to be equivalent to Investment 2
+at 2.3% in a constant short-term rate environment.
+
 ## Yield curve types
 
 The yield curve generally takes three shapes:
@@ -132,12 +176,12 @@ often a signal of an impending recession.
 x <- c(1/12, 2/12, 3/12, 6/12, c(1,2,3,5,7,10,20,30))
 x_labels <- c("1mo", "2mo", "3mo", "6mo", 1, 2, 3, 5, 7, 10, 20, 30)
 
-Y1 <- rbind(subset(Y2018, Date == as.Date("2018-01-02")),
-            subset(Y2009, Date == as.Date("2009-11-27")),
-            subset(Y2006, Date == as.Date("2006-11-15")))
-df1 <- data.frame(x = rep(x, each = nrow(Y1)),
+Y1 <- rbind(subset(Y2018, Date == as.Date("2018-01-02"), select = -mo2),
+            subset(Y2009, Date == as.Date("2009-11-27"), select = -mo2),
+            subset(Y2006, Date == as.Date("2006-11-15"), select = -mo2))
+df1 <- data.frame(x = rep(x[-2], each = nrow(Y1)),
                  y = unlist(Y1[,-1], use.names = FALSE),
-                 id = rep(c("Flat 1/2/2018", "Normal 11/27/2009", "Inverted 11/15/2006"), times = length(x)))
+                 id = rep(c("Flat 1/2/2018", "Normal 11/27/2009", "Inverted 11/15/2006"), times = length(x[-2])))
 g1 <- ggplot(df1, aes(x = x, y = y, group = id, col = id)) + 
   geom_line() + geom_point() +
   ylim(0, 6) + ylab("Percent") +
@@ -150,23 +194,38 @@ plot(g1)
 
 ## Yield Curve Changes Throughout the Year and Over Time
 
+In 2018, the yield curve has generally been rising:
+
 ```{r TreasuryPlot2018, echo=FALSE, warning=FALSE}
-Y1 <- subset(Y2018, Date >= as.Date("2018-01-01"))
-df1 <- data.frame(x = rep(x, each = nrow(Y1)),
+Y1 <- subset(Y2018, Date >= as.Date("2018-01-01") & Date <= as.Date("2018-10-15"), select = -mo2)
+Y2 <- subset(Y2018, Date >= as.Date("2018-10-16"))
+df1 <- data.frame(x = rep(x[-2], each = nrow(Y1)),
                  y = unlist(Y1[,-1], use.names = FALSE),
-                 date = rep(factor(as.character(Y1[,1])), times = length(x)))
-df2 <- data.frame(x = x,
+                 date = rep(factor(as.character(Y1[,1])), times = length(x[-2])))
+df2 <- data.frame(x = x[-2],
                   y = unlist(Y1[1, -1]),
                   date = Y1$Date[1])
+df3 <- data.frame(x = rep(x, each = nrow(Y2)),
+                 y = unlist(Y2[,-1], use.names = FALSE),
+                 date = rep(factor(as.character(Y2[,1])), times = length(x)))
 g1 <- ggplot(df1, aes(x = x, y = y, group = date)) + 
   geom_line(col = "grey") + 
   geom_line(aes(x = x, y = y, group = date), data = df2, col = "green") +
+  geom_line(aes(x = x, y = y, group = date), data = df3, col = "grey") +
   ylim(0, 4) + ylab("Percent") +
   scale_x_log10(limits = c(0.08, 31), breaks = x, labels = x_labels, name = "Years") +
   ggtitle("Yield Curve Changes in 2018") + theme_bw()
 plot(g1)
+```
 
+Over time, the yield curve has taken many shapes.  Note that the 20 yr and 2 month
+treasury yields are interpolated for this chart at some points historically.
+
+```{r TreasuryPlotAnimation, echo=FALSE, warning=FALSE}
+# for the purposes of this graph, interpolate the mo2 and the yr 20
 Y1 <- subset(Y, day(Date) == 1) # get the first of each month not a weekend
+Y1$yr20 <- ifelse(is.na(Y1$yr20), (Y1$yr10 + Y1$yr30)/2, Y1$yr20)
+Y1$mo2 <- ifelse(is.na(Y1$mo2), (Y1$mo1 + Y1$mo3)/2, Y1$mo2)
 df1 <- data.frame(x = rep(x, each = nrow(Y1)),
                  y = unlist(Y1[,-1], use.names = FALSE),
                  date = rep(factor(as.character(Y1[,1])), times = length(x)),
@@ -179,7 +238,11 @@ g1 <- ggplot(df1, aes(x = x, y = y, group = date)) +
                 labels = x_labels, name = "Years") +
   theme_bw()
 ggplotly(g1)
+```
 
+Each curve can also be plotted together:
+
+```{r YieldsOverTime, echo=FALSE, warning=FALSE}
 df1 <- reshape::melt(Y, id.vars = "Date")
 names(df1) <- c("Date", "Duration", "yield")
 g1 <- ggplot(data = df1) + 
@@ -203,7 +266,7 @@ plot(g1)
 Note that the yield curve inverts (the 10 yr treasury is lower yield than
 the 2 year treasury) just before a recession (shaded area).
 
-```{r echo=FALSE, warning=FALSE}
+```{r invert, echo=FALSE, warning=FALSE}
 
 df1 <- data.frame(Date = Y$Date,
                   yieldSpread = Y$yr10 - Y$yr02)
@@ -234,7 +297,7 @@ plot(g1)
 * All loans and deposit products are paid or charged interest at the end of each 
 year.  The entire principle and interest are paid back at the end of the term.
 
-```{r echo=FALSE}
+```{r exyield, echo=FALSE}
 df1 <- data.frame(x = x,
                   y = c(1.5, 1.5, 1.6, 1.7, 1.85, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5))
 
@@ -249,7 +312,7 @@ plot(g1)
 
 ### One CD, one secured loan, matched term and some equity
 
-```{r echo=FALSE}
+```{r data1, echo=FALSE}
 cd_rate <- 0.0050
 cd_value <- 100000
 loan_rate <- 0.03
@@ -264,7 +327,7 @@ loan_value <- 200000
 * Interest Expense = `r scales::dollar(cd_rate*cd_value)`
 * Net Interest Income = Spread Income = `r scales::dollar(loan_rate*loan_value-cd_rate*cd_value)`
 
-```{r echo=FALSE}
+```{r bankplot1, echo=FALSE}
 g1 <- ggplot(df1, aes(x = x, y = y)) + 
   geom_line() + geom_point() +
   ylim(0, 5) + ylab("Percent") +
@@ -284,7 +347,7 @@ plot(g1)
 
 ### One Loan and a shorter term CD
 
-```{r echo=FALSE}
+```{r data2, echo=FALSE}
 cd_rate <- 0.0030
 cd_value <- 100000
 loan_rate <- 0.0315
@@ -304,7 +367,7 @@ Each year,
 * Interest Expense = `r scales::dollar(cd_rate*cd_value)`
 * Net Interest Income = Spread Income = `r scales::dollar(loan_rate*loan_value-cd_rate*cd_value)`
 
-```{r echo=FALSE}
+```{r bankplot2, echo=FALSE}
 g1 <- ggplot(df1, aes(x = x, y = y)) + 
   geom_line() + geom_point() +
   ylim(0, 5) + ylab("Percent") +
@@ -344,7 +407,7 @@ $$D_{gap} = D_a - \frac{\sum a_j}{\sum l_j} D_l$$
 
 $$\Delta NW = - D_{gap} * \frac{\Delta i}{1 + i}$$
 
-```{r echo=FALSE, results=FALSE}
+```{r mac, echo=FALSE, results=FALSE}
 macaulay_duration <- function(times, cash_flows, discount_rate_per_period)
 {
   assertthat::assert_that(length(times) == length(cash_flows))
@@ -373,7 +436,7 @@ assertthat::assert_that(all.equal(yield_to_maturity(5, 2.5, 95.92, 100), 0.034,
 
 #### Duration of the Portfolio
 
-```{r echo=FALSE}
+```{r duration_calc, echo=FALSE}
 duration_l <- macaulay_duration(1, 100000*(1 + 0.0035/2), 0.0035/2) * 0.5 # 1/2 to change from 6 month periods to 1 year periods
 duration_a <- macaulay_duration(1:2, c(0.0315*200000, 200000*(1 + 0.0315)), 0.0315)
 duration_gap <- duration_a - cd_value / loan_value * duration_l
@@ -429,7 +492,7 @@ $$i_{\textit{NIATC}} = i_{N} - e_{\textit{Pref Div}}$$
 * $NIATC$ = Net Income Available to Common or available to common shareholders
 * $Pref\ Div$ = Dividends for Preferred shared
 
-```{r waterfalls}
+```{r waterfalls, echo=FALSE, warnings=FALSE}
 g <- waterfall(values = c(10, -2, 8, -4, -1, -0.4, -0.2),
           labels = c("Interest\nIncome", "Interest\nExpense", "Non-Interest\nIncome",
                      "Non-Interest\nExpense", "Provision for\nLoan Losses",
@@ -440,7 +503,10 @@ g <- waterfall(values = c(10, -2, 8, -4, -1, -0.4, -0.2),
           rect_text_labels = character(7),
           total_rect_text = "") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
-        axis.ticks.x = element_blank())
+        axis.ticks.x = element_blank()) +
+  theme_bw() +
+  xlab("") +
+  ylab("Dollars")
 
 g + annotate("text", x = 2.5, y = 8.2, label = "Net Income", angle = 90, hjust = 0) +
   annotate("text", x = 4.5, y = 12.2, label = "PTPP", angle = 90, hjust = 0) +
@@ -451,7 +517,7 @@ g + annotate("text", x = 2.5, y = 8.2, label = "Net Income", angle = 90, hjust =
 
 ### Performance Measures
 
-```{r echo=FALSE}
+```{r performance_measures, echo=FALSE}
 make_performance_graph <- function(key, xlabel, show_zero = TRUE)
 {
   URL <- "https://fred.stlouisfed.org/graph/fredgraph.csv?drp=0&mode=fred&id=USROE&cosd=1984-01-01&coed=2018-04-01&fq=Quarterly%2C%20End%20of%20Period&fam=avg&vintage_date=2018-10-14&revision_date=2018-10-14&nd=1984-01-01"
@@ -485,7 +551,7 @@ make_performance_graph <- function(key, xlabel, show_zero = TRUE)
 $$\eta = \frac{i_{nI} + i_{I} - e_{I} - e_{nI}}{i_{nI} + i_{I} - e_{I}}$$
 $$\textit{efficiency ratio} = (1-\eta) = \frac{e_{nI}}{i_{nI} + i_{I} - e_{I}}$$
 
-```{r echo=FALSE}
+```{r useff, echo=FALSE}
 make_performance_graph("DDEI07USA156NWDB", "US Average Efficiency Ratio", 
                        show_zero = FALSE)
 ```
@@ -493,30 +559,79 @@ make_performance_graph("DDEI07USA156NWDB", "US Average Efficiency Ratio",
 
 $$\textit{ROE} = \frac{i_{\textit{NIATC}}}{\langle e \rangle}$$
 
-```{r echo=FALSE}
+```{r usroe, echo=FALSE}
 make_performance_graph("USROE", "US Averge Return on Equity")
 ```
 
 $$\textit{ROA} = \frac{i_{\textit{NIATC}}}{\langle a\rangle}$$
 
-```{r echo=FALSE}
+```{r usroa, echo=FALSE}
 make_performance_graph("USROA", "US Averge Return on Average Assets")
 ```
 
+$$\textit{NIM} = \frac{i_I - e_I}{\langle a_{\textit{earning}} \rangle}$$
+
+* $NIM$ = Net Interest Margin
+* $\langle a_{\textit{earning}} \rangle$ = Average Earning Assets
+
+```{r usnim, echo=FALSE}
+make_performance_graph("USNIM", "US Average Net Interest Margin", show_zero = FALSE)
+```
+
+### ROE Decomposition
+
+What are the drivers of ROE?
 
 $$\textit{ROE} = (\textit{Leverage})(\textit{ROA})$$
 
 $$\textit{ROE} =  (\textit{Asset Yield})(\textit{Profit Margin})(\textit{Leverage})$$
 $$\textit{ROE} = \frac{\textit{Total Revenue}}{\textit{Avg Total Assets}}\frac{\textit{Net Income}}{\textit{Total Revenue}}\frac{\textit{Avg Total Assets}}{\textit{Avg Common Equity}}$$
 $$\textit{ROE} = \frac{i_{nI}+i_{I}}{\langle a \rangle}\frac{i_{\textit{NIATC}}}{i_{nI}+i_{I}}\frac{\langle a \rangle}{\langle e \rangle}$$
-$$\textit{NIM} = \frac{i_I - e_I}{\langle a_{\textit{earning}} \rangle}$$
 
-* $NIM$ = Net Interest Margin
-* $\langle a_{\textit{earning}} \rangle$ = Average Earning Assets
+### CBA Executive Banking School Earnings Power Model
 
-```{r echo=FALSE}
-make_performance_graph("USNIM", "US Average Net Interest Margin", show_zero = FALSE)
+```{r earning_power_model, echo=FALSE, fig.height=8}
+node1 <- Node$new("Bank Performance")
+  neti <- node1$AddChild("Net Income\nAvailable to Common")
+    netii <- neti$AddChild("Net Interest\nIncome")
+      ii <- netii$AddChild("Interest Income")
+        loan <- ii$AddChild("Loans")
+        sec <- ii$AddChild("Securities")
+        dep <- ii$AddChild("Fed Funds Sold\n& Bank Deposits")
+        oii <- ii$AddChild("Other Interest\nIncome")
+      ie <- netii$AddChild("Interest Expense")
+        tim <- ie$AddChild("Time Deposits")
+        nma <- ie$AddChild("Non-Maturing\nAccounts")
+        bor <- ie$AddChild("Borrowings")
+        oie <- ie$AddChild("Other\nInterest Expense")
+    provision <- neti$AddChild("Provision")
+    nonii <- neti$AddChild("Non-Interest\nIncome")
+      nonii$AddChild("Service Charges")
+      nonii$AddChild("Mortgage Fees")
+      nonii$AddChild("Payment Businesses")
+      nonii$AddChild("Other\nNon-interest Income")
+    nonie <- neti$AddChild("Non-Interest\nExpense")
+      nonie$AddChild("Employee Expenses")
+      nonie$AddChild("Permises &\nFixed Assets")
+      nonie$AddChild("Marketing")
+      nonie$AddChild("Other Non-\nInterest Expense")
+    tax <- neti$AddChild("Tax")
+    pref <- neti$AddChild("Preferred\nDividends")
+  roe <- node1$AddChild("Return on Equity")
+    leverage2 <- roe$AddChild("Leverage")
+    roa2 <- roe$AddChild("Return on Assets")
+      ay <- roa2$AddChild("Asset Yield")
+      pm <- roa2$AddChild("Profit Margin")
+
+# LR for Left Right
+SetGraphStyle(node1, rankdir = "LR", splines = "spline")
+SetEdgeStyle(node1, arrowhead = "vee", color = "grey35", penwidth = 2)
+SetNodeStyle(node1, style = "filled,rounded", shape = "box", fillcolor = "green", 
+            fontname = "helvetica", tooltip = GetDefaultTooltip, fontcolor = "black")
+  
+plot(node1)
 ```
+
 
 ## Dictionary
 
