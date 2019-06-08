@@ -80,11 +80,10 @@ Other liabilities & Long & non-Core \\ \hline
 
 ## Equity
 
-- Preferred Equity
-- Common Equity
-- Additional Paid in Capital (APIC)
-- Retained Earnings
-- Treasury Stock
+- Preferred Equity - higher claim of asset ownership, usual no voting rights
+- Common Equity - majority of shares
+- Retained Earnings - earnings retained from profits but not otherwise invested
+- Treasury Stock - outstanding stock, repurchased from shareholders.
 
 ## Notes
 
